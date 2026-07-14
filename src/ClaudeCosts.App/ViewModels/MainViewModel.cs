@@ -18,9 +18,12 @@ public sealed class MainViewModel : ViewModelBase
     private readonly SettingsService _settingsService;
     private readonly AutostartService _autostart;
     private readonly Action _showWindow;
+    private readonly Action _toggleWindow;
     private readonly Action _exit;
 
     private bool _autostartEnabled;
+    private bool _showSettings;
+    private bool _pinned;
     private bool _isLoading;
     private bool _hasNoData;
     private string _headline = "$0.00";
@@ -30,7 +33,6 @@ public sealed class MainViewModel : ViewModelBase
     private string _statusMessage = "";
     private string _lastUpdatedText = "";
     private string _trayText = "$0";
-    private double _trayFontSize = 92;
     private string _trayTooltip = "Claude-Kosten";
     private IReadOnlyList<BucketRow> _buckets = Array.Empty<BucketRow>();
     private IReadOnlyList<ModelRow> _models = Array.Empty<ModelRow>();
@@ -41,6 +43,7 @@ public sealed class MainViewModel : ViewModelBase
         SettingsService settingsService,
         AutostartService autostart,
         Action showWindow,
+        Action toggleWindow,
         Action exit)
     {
         _usage = usage;
@@ -48,11 +51,15 @@ public sealed class MainViewModel : ViewModelBase
         _settingsService = settingsService;
         _autostart = autostart;
         _showWindow = showWindow;
+        _toggleWindow = toggleWindow;
         _exit = exit;
         _autostartEnabled = autostart.IsEnabled();
 
         ReloadCommand = new RelayCommand(() => _ = ReloadAsync());
         ShowWindowCommand = new RelayCommand(() => _showWindow());
+        ToggleWindowCommand = new RelayCommand(() => _toggleWindow());
+        OpenSettingsCommand = new RelayCommand(OpenSettings);
+        CloseSettingsCommand = new RelayCommand(() => ShowSettings = false);
         ExitCommand = new RelayCommand(() => _exit());
         SetGranularityCommand = new RelayCommand(SetGranularity);
         OpenPricingCommand = new RelayCommand(OpenPricingFile);
@@ -65,6 +72,9 @@ public sealed class MainViewModel : ViewModelBase
     // --- Commands ---
     public ICommand ReloadCommand { get; }
     public ICommand ShowWindowCommand { get; }
+    public ICommand ToggleWindowCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
+    public ICommand CloseSettingsCommand { get; }
     public ICommand ExitCommand { get; }
     public ICommand SetGranularityCommand { get; }
     public ICommand OpenPricingCommand { get; }
@@ -72,6 +82,9 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>Raised after a refresh so the tray icon can update its generated image/tooltip.</summary>
     public event EventHandler? TrayChanged;
+
+    /// <summary>Raised when the refresh interval changes so the host can retune its timer.</summary>
+    public event EventHandler? RefreshIntervalChanged;
 
     // --- Bindable state ---
     public Granularity Granularity
@@ -98,6 +111,38 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    public bool WeekStartsMonday
+    {
+        get => _settings.WeekStartsMonday;
+        set
+        {
+            if (_settings.WeekStartsMonday == value) return;
+            _settings.WeekStartsMonday = value;
+            _settingsService.Save(_settings);
+            OnPropertyChanged();
+            Refresh();
+        }
+    }
+
+    public int RefreshIntervalSeconds
+    {
+        get => _settings.RefreshIntervalSeconds;
+        set
+        {
+            if (_settings.RefreshIntervalSeconds == value) return;
+            _settings.RefreshIntervalSeconds = value;
+            _settingsService.Save(_settings);
+            OnPropertyChanged();
+            RefreshIntervalChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>When true, the window shows the in-window settings page instead of the tabs.</summary>
+    public bool ShowSettings { get => _showSettings; set => SetProperty(ref _showSettings, value); }
+
+    /// <summary>When true, the flyout stays open on focus loss instead of auto-hiding.</summary>
+    public bool Pinned { get => _pinned; set => SetProperty(ref _pinned, value); }
+
     public bool IsLoading { get => _isLoading; private set => SetProperty(ref _isLoading, value); }
     public bool HasNoData { get => _hasNoData; private set => SetProperty(ref _hasNoData, value); }
     public string Headline { get => _headline; private set => SetProperty(ref _headline, value); }
@@ -110,7 +155,6 @@ public sealed class MainViewModel : ViewModelBase
     public IReadOnlyList<ModelRow> Models { get => _models; private set => SetProperty(ref _models, value); }
 
     public string TrayText { get => _trayText; private set => SetProperty(ref _trayText, value); }
-    public double TrayFontSize { get => _trayFontSize; private set => SetProperty(ref _trayFontSize, value); }
     public string TrayTooltip { get => _trayTooltip; private set => SetProperty(ref _trayTooltip, value); }
 
     public async Task ReloadAsync()
@@ -129,6 +173,13 @@ public sealed class MainViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    // Shared by the header gear and the tray menu: make sure the window is up, then reveal settings.
+    private void OpenSettings()
+    {
+        ShowSettings = true;
+        _showWindow();
     }
 
     private void SetGranularity(object? parameter)
@@ -194,7 +245,6 @@ public sealed class MainViewModel : ViewModelBase
             : "";
 
         TrayText = Format.TrayText(current.Cost);
-        TrayFontSize = Format.TrayFontSize(TrayText);
         TrayTooltip = BuildTooltip(current);
 
         TrayChanged?.Invoke(this, EventArgs.Empty);

@@ -4,20 +4,39 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ClaudeCosts.App"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
-        Title="Claude-Kosten" Height="640" Width="940" MinHeight="480" MinWidth="740"
+        Title="Claude-Kosten" Height="540" Width="300" MinHeight="380" MinWidth="260"
+        ShowInTaskbar="False" WindowStyle="None" ResizeMode="NoResize"
         Background="{StaticResource WindowBg}"
         FontFamily="Segoe UI" TextOptions.TextFormattingMode="Ideal"
         UseLayoutRounding="True">
 
-    <Grid Margin="18">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header card -->
+        <!-- Window controls, flush to the very top of the window -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,8,0">
+            <ToggleButton Style="{StaticResource GranToggle}" IsChecked="{Binding Pinned}"
+                          ToolTip="Angeheftet halten (schließt nicht bei Klick daneben)"
+                          Padding="6,3" FontSize="11"
+                          FontFamily="Segoe MDL2 Assets" Content="&#xE840;" />
+            <Button Style="{StaticResource ToolButton}" Command="{Binding ToggleWindowCommand}"
+                    ToolTip="Schließen" Margin="6,0,0,0" Padding="6,3" FontSize="11"
+                    FontFamily="Segoe MDL2 Assets" Content="&#xE8BB;" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="18,4,18,18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header card -->
         <Border Grid.Row="0" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
                 BorderThickness="1" CornerRadius="12" Padding="22,18">
             <Grid>
@@ -29,165 +48,203 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding PeriodTypeName, StringFormat=KOSTEN · {0}}"
                                FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SubtleBg}" />
-                    <TextBlock Text="{Binding Headline}" FontSize="46" FontWeight="Bold"
-                               Foreground="{StaticResource TextBg}" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding Headline}" FontSize="34" FontWeight="Bold"
+                               Foreground="{StaticResource TextBg}" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding HeadlineCaption}" FontSize="14"
                                Foreground="{StaticResource SubtleBg}" Margin="0,2,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-                    <Border Background="{StaticResource BarTrack}" CornerRadius="9" Padding="3"
-                            HorizontalAlignment="Right">
-                        <StackPanel Orientation="Horizontal">
-                            <ToggleButton Style="{StaticResource GranToggle}" Content="Tag"
-                                          Command="{Binding SetGranularityCommand}" CommandParameter="Day"
-                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Day}" />
-                            <ToggleButton Style="{StaticResource GranToggle}" Content="Woche"
-                                          Command="{Binding SetGranularityCommand}" CommandParameter="Week"
-                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Week}" />
-                            <ToggleButton Style="{StaticResource GranToggle}" Content="Monat"
-                                          Command="{Binding SetGranularityCommand}" CommandParameter="Month"
-                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Month}" />
-                            <ToggleButton Style="{StaticResource GranToggle}" Content="Gesamt"
-                                          Command="{Binding SetGranularityCommand}" CommandParameter="All"
-                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=All}" />
-                        </StackPanel>
-                    </Border>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                        <TextBlock Text="Lädt …" Foreground="{StaticResource SubtleBg}" FontSize="12"
-                                   VerticalAlignment="Center" Margin="0,0,10,0"
-                                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
-                        <Button Style="{StaticResource ToolButton}" Content="↻  Aktualisieren"
-                                Command="{Binding ReloadCommand}" />
-                    </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            Visibility="{Binding ShowSettings, Converter={StaticResource InverseBoolToVis}}">
+                    <TextBlock Text="Lädt …" Foreground="{StaticResource SubtleBg}" FontSize="11"
+                               VerticalAlignment="Center" Margin="0,0,8,0"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                    <Button Style="{StaticResource ToolButton}" Command="{Binding ReloadCommand}"
+                            ToolTip="Aktualisieren" Padding="6,3" FontSize="11"
+                            FontFamily="Segoe MDL2 Assets" Content="&#xE72C;" />
+                    <Button Style="{StaticResource ToolButton}" Command="{Binding OpenSettingsCommand}"
+                            ToolTip="Einstellungen" Margin="6,0,0,0" Padding="6,3" FontSize="11"
+                            FontFamily="Segoe MDL2 Assets" Content="&#xE713;" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Content -->
+        <!-- Content: tabs (Übersicht / Modelle) and the settings page share this row -->
         <Grid Grid.Row="1" Margin="0,14,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" />
-                <ColumnDefinition Width="2*" />
-            </Grid.ColumnDefinitions>
 
-            <!-- Buckets -->
-            <Border Grid.Column="0" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
-                    BorderThickness="1" CornerRadius="12" Padding="18,16" Margin="0,0,7,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <!-- Tabs -->
+            <TabControl Style="{StaticResource CardTabs}"
+                        Visibility="{Binding ShowSettings, Converter={StaticResource InverseBoolToVis}}">
 
-                    <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}" Text="{Binding BucketsHeader}" />
+                <!-- Übersicht (Tages-/Wochen-Verlauf) -->
+                <TabItem Header="Übersicht">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap"
-                               Foreground="{StaticResource SubtleBg}" FontSize="13"
-                               Visibility="{Binding HasNoData, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}" Text="{Binding BucketsHeader}" />
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Buckets}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border CornerRadius="8" Padding="10,7" Margin="0,0,0,3" Background="Transparent">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource AccentSoft}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="160" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="96" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Label}" FontSize="13"
-                                                           Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
-                                                           FontSize="11" Foreground="{StaticResource SubtleBg}" />
-                                            </StackPanel>
-                                            <ProgressBar Grid.Column="1" Style="{StaticResource BarStyle}"
-                                                         Value="{Binding Percent, Mode=OneWay}"
-                                                         VerticalAlignment="Center" Margin="10,0" />
-                                            <TextBlock Grid.Column="2" Text="{Binding CostText}" FontSize="14"
-                                                       FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
-                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource SubtleBg}" FontSize="13"
+                                   Visibility="{Binding HasNoData, Converter={StaticResource BoolToVis}}" />
 
-            <!-- Models -->
-            <Border Grid.Column="1" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
-                    BorderThickness="1" CornerRadius="12" Padding="18,16" Margin="7,0,0,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
-                               Text="{Binding PeriodTypeName, StringFormat=MODELLE · {0}}" />
-
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Models}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Padding="10,7" Margin="0,0,0,3">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="90" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="{Binding Model}" FontSize="13"
-                                                           Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
-                                                <StackPanel Orientation="Horizontal">
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Buckets}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="10,7" Margin="0,0,0,3" Background="Transparent">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Label}" FontSize="13"
+                                                               Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
                                                                FontSize="11" Foreground="{StaticResource SubtleBg}" />
-                                                    <TextBlock Text="{Binding PricingNote}" FontSize="11"
-                                                               Foreground="{StaticResource Accent}" Margin="8,0,0,0" />
                                                 </StackPanel>
-                                                <ProgressBar Style="{StaticResource BarStyle}"
-                                                             Value="{Binding Percent, Mode=OneWay}" Margin="0,6,0,0" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
-                                                       FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
-                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                                <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
+                                                           FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                           Margin="10,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <!-- Modelle -->
+                <TabItem Header="Modelle">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
+                                   Text="{Binding PeriodTypeName, StringFormat=MODELLE · {0}}" />
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Models}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10,7" Margin="0,0,0,3">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="90" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding Model}" FontSize="13"
+                                                               Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
+                                                                   FontSize="11" Foreground="{StaticResource SubtleBg}" />
+                                                        <TextBlock Text="{Binding PricingNote}" FontSize="11"
+                                                                   Foreground="{StaticResource Accent}" Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
+                                                           FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- Settings page (shown in place of the tabs) -->
+            <Border Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
+                    BorderThickness="1" CornerRadius="12" Padding="18,16"
+                    Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+                        <Button Style="{StaticResource ToolButton}" Content="←  Zurück"
+                                Command="{Binding CloseSettingsCommand}" />
+                        <TextBlock Text="Einstellungen" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBg}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="ANZEIGE-ZEITRAUM" />
+                            <Border Background="{StaticResource BarTrack}" CornerRadius="9" Padding="3"
+                                    HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton Style="{StaticResource GranToggle}" Content="Tag"
+                                                  Command="{Binding SetGranularityCommand}" CommandParameter="Day"
+                                                  IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Day}" />
+                                    <ToggleButton Style="{StaticResource GranToggle}" Content="Woche"
+                                                  Command="{Binding SetGranularityCommand}" CommandParameter="Week"
+                                                  IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Week}" />
+                                    <ToggleButton Style="{StaticResource GranToggle}" Content="Monat"
+                                                  Command="{Binding SetGranularityCommand}" CommandParameter="Month"
+                                                  IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Month}" />
+                                    <ToggleButton Style="{StaticResource GranToggle}" Content="Gesamt"
+                                                  Command="{Binding SetGranularityCommand}" CommandParameter="All"
+                                                  IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=All}" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="VERHALTEN" Margin="0,20,0,8" />
+                            <CheckBox Content="Mit Windows starten" Foreground="{StaticResource TextBg}"
+                                      IsChecked="{Binding Autostart}" />
+                            <CheckBox Content="Woche beginnt am Montag" Foreground="{StaticResource TextBg}"
+                                      IsChecked="{Binding WeekStartsMonday}" Margin="0,10,0,0" />
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Aktualisierungsintervall"
+                                           Foreground="{StaticResource TextBg}" VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1" Width="130" SelectedValuePath="Tag"
+                                          SelectedValue="{Binding RefreshIntervalSeconds}">
+                                    <ComboBoxItem Content="15 Sekunden"><ComboBoxItem.Tag><sys:Int32>15</sys:Int32></ComboBoxItem.Tag></ComboBoxItem>
+                                    <ComboBoxItem Content="30 Sekunden"><ComboBoxItem.Tag><sys:Int32>30</sys:Int32></ComboBoxItem.Tag></ComboBoxItem>
+                                    <ComboBoxItem Content="1 Minute"><ComboBoxItem.Tag><sys:Int32>60</sys:Int32></ComboBoxItem.Tag></ComboBoxItem>
+                                    <ComboBoxItem Content="2 Minuten"><ComboBoxItem.Tag><sys:Int32>120</sys:Int32></ComboBoxItem.Tag></ComboBoxItem>
+                                    <ComboBoxItem Content="5 Minuten"><ComboBoxItem.Tag><sys:Int32>300</sys:Int32></ComboBoxItem.Tag></ComboBoxItem>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </Border>
         </Grid>
 
-        <!-- Footer -->
-        <Grid Grid.Row="2" Margin="4,12,4,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="Berechneter API-Listenpreis (wie ccusage) – kein real abgerechneter Betrag."
-                           FontSize="11" Foreground="{StaticResource SubtleBg}" />
+            <!-- Footer -->
+            <StackPanel Grid.Row="2" Margin="4,12,4,0">
                 <TextBlock Text="{Binding LastUpdatedText}" FontSize="11"
-                           Foreground="{StaticResource SubtleBg}" Margin="0,2,0,0" />
+                           Foreground="{StaticResource SubtleBg}" />
             </StackPanel>
-            <CheckBox Grid.Column="1" Content="Autostart mit Windows" VerticalAlignment="Center"
-                      Foreground="{StaticResource TextBg}" IsChecked="{Binding Autostart}" />
         </Grid>
     </Grid>
 </Window>
