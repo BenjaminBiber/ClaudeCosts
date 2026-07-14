@@ -31,16 +31,6 @@ public static class Format
         return $"${cost:0.0}";
     }
 
-    /// <summary>Font size (on a 128px canvas) that keeps <paramref name="trayText"/> from clipping.</summary>
-    public static double TrayFontSize(string trayText) => trayText.Length switch
-    {
-        <= 2 => 92,
-        3 => 74,
-        4 => 58,
-        5 => 48,
-        _ => 40,
-    };
-
     /// <summary>German period label for a bucket, e.g. "Juli 2026", "KW 29 · 13.–19.07.2026", "Mo. 14.07.2026", "Gesamt".</summary>
     public static string PeriodLabel(UsageBucket bucket)
     {

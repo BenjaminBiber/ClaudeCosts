@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - major
+          - minor
+          - patch
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute version
+        id: version
+        shell: pwsh
+        run: |
+          $latest = git tag --list "v*" --sort=-v:refname | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($latest)) {
+            $major = 0; $minor = 0; $patch = 0
+            Write-Host "No existing tag found, starting from 0.0.0"
+          } else {
+            Write-Host "Latest tag: $latest"
+            $parts = $latest.TrimStart('v').Split('.')
+            $major = [int]$parts[0]; $minor = [int]$parts[1]; $patch = [int]$parts[2]
+          }
+
+          switch ("${{ inputs.bump }}") {
+            "major" { $major++; $minor = 0; $patch = 0 }
+            "minor" { $minor++; $patch = 0 }
+            "patch" { $patch++ }
+          }
+
+          $version = "$major.$minor.$patch"
+          $tag = "v$version"
+          Write-Host "New version: $version (tag $tag)"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag"         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Restore
+        run: dotnet restore ClaudeCosts.sln
+
+      - name: Test
+        run: dotnet test tests/ClaudeCosts.Core.Tests/ClaudeCosts.Core.Tests.csproj -c Release
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish src/ClaudeCosts.App/ClaudeCosts.App.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:Version=${{ steps.version.outputs.version }} `
+            -o publish
+
+      - name: Rename artifact
+        shell: pwsh
+        run: |
+          $name = "ClaudeCosts-${{ steps.version.outputs.tag }}.exe"
+          Move-Item -Path "publish/ClaudeCosts.exe" -Destination $name -Force
+          Write-Host "Artifact: $name"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: ClaudeCosts-${{ steps.version.outputs.tag }}.exe

@@ -20,6 +20,8 @@ public partial class App : Application
     private FileWatcherService _watcher = null!;
     private DispatcherTimer _timer = null!;
     private MainWindow? _window;
+    private bool _exiting;
+    private DateTime _autoHiddenAt;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -42,7 +44,9 @@ public partial class App : Application
         _vm = new MainViewModel(
             _usage, _settings, _settingsService, new AutostartService(),
             showWindow: ShowMainWindow,
+            toggleWindow: ToggleMainWindow,
             exit: ExitApp);
+        _vm.RefreshIntervalChanged += OnRefreshIntervalChanged;
 
         _tray = new TrayIconController(_vm);
 
@@ -71,15 +75,35 @@ public partial class App : Application
 
     private async void OnTimerTick(object? sender, EventArgs e) => await _vm.ReloadAsync();
 
+    private void OnRefreshIntervalChanged(object? sender, EventArgs e) =>
+        _timer.Interval = TimeSpan.FromSeconds(Math.Max(15, _settings.RefreshIntervalSeconds));
+
+    // Left-click on the tray icon toggles the flyout open/closed.
+    private void ToggleMainWindow()
+    {
+        if (_window is { IsVisible: true })
+        {
+            _window.Hide();
+            return;
+        }
+
+        // The tray click first deactivated (and auto-hid) the window; don't immediately reopen it.
+        if (DateTime.UtcNow - _autoHiddenAt < TimeSpan.FromMilliseconds(300))
+            return;
+
+        ShowMainWindow();
+    }
+
     private void ShowMainWindow()
     {
         if (_window is null)
         {
             _window = new MainWindow { DataContext = _vm };
-            ApplyPlacement(_window);
             _window.Closing += OnWindowClosing;
+            _window.Deactivated += OnWindowDeactivated;
         }
 
+        ApplyPlacement(_window); // re-anchor to the bottom-right corner on every open
         _window.Show();
         if (_window.WindowState == WindowState.Minimized)
             _window.WindowState = WindowState.Normal;
@@ -88,17 +112,28 @@ public partial class App : Application
         _window.Topmost = false;
     }
 
+    // Closing just hides the flyout; the app keeps living in the tray.
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
-        SavePlacement(_window);
-        if (_window is not null)
-            _window.Closing -= OnWindowClosing;
-        _window = null; // recreate fresh next time (app stays alive in tray)
+        if (_exiting) return;
+        e.Cancel = true;
+        _window?.Hide();
+    }
+
+    // Clicking elsewhere hides the flyout — unless the user pinned it open.
+    private void OnWindowDeactivated(object? sender, EventArgs e)
+    {
+        if (_exiting || _vm.Pinned) return;
+        if (_window is { IsVisible: true })
+        {
+            _autoHiddenAt = DateTime.UtcNow;
+            _window.Hide();
+        }
     }
 
     private void ExitApp()
     {
-        SavePlacement(_window);
+        _exiting = true;
         _timer?.Stop();
         _watcher?.Dispose();
         _tray?.Dispose();
@@ -107,47 +142,18 @@ public partial class App : Application
         Shutdown();
     }
 
+    // Anchor the window to the bottom-right of the primary work area (above the taskbar),
+    // like a tray flyout. Size is the fixed compact default from XAML; position is not persisted.
+    private const double EdgeMargin = 12;
+
     private void ApplyPlacement(Window window)
     {
-        if (_settings.WindowWidth is > 200 and { } w) window.Width = w;
-        if (_settings.WindowHeight is > 150 and { } h) window.Height = h;
+        var area = SystemParameters.WorkArea; // DIPs, matches WPF Left/Top
+        double width = window.ActualWidth > 0 ? window.ActualWidth : window.Width;
+        double height = window.ActualHeight > 0 ? window.ActualHeight : window.Height;
 
-        if (_settings.WindowLeft is { } left && _settings.WindowTop is { } top &&
-            IsOnScreen(left, top, window.Width, window.Height))
-        {
-            window.WindowStartupLocation = WindowStartupLocation.Manual;
-            window.Left = left;
-            window.Top = top;
-        }
-        else
-        {
-            window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        }
-    }
-
-    private void SavePlacement(Window? window)
-    {
-        if (window is null) return;
-
-        var bounds = window.RestoreBounds; // normal-state bounds even if maximized/minimized
-        if (bounds.Width < 200 || bounds.Height < 150) return;
-
-        _settings.WindowLeft = bounds.Left;
-        _settings.WindowTop = bounds.Top;
-        _settings.WindowWidth = bounds.Width;
-        _settings.WindowHeight = bounds.Height;
-        _settingsService.Save(_settings);
-    }
-
-    private static bool IsOnScreen(double left, double top, double width, double height)
-    {
-        var virt = new Rect(
-            SystemParameters.VirtualScreenLeft,
-            SystemParameters.VirtualScreenTop,
-            SystemParameters.VirtualScreenWidth,
-            SystemParameters.VirtualScreenHeight);
-
-        // require a chunk of the title bar to be visible
-        return virt.IntersectsWith(new Rect(left, top, Math.Max(width, 1), 40));
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        window.Left = Math.Max(area.Left, area.Right - width - EdgeMargin);
+        window.Top = Math.Max(area.Top, area.Bottom - height - EdgeMargin);
     }
 }

@@ -12,9 +12,4 @@ public sealed class AppSettings
 
     /// <summary>Safety-net full refresh interval, in seconds.</summary>
     public int RefreshIntervalSeconds { get; set; } = 60;
-
-    public double? WindowLeft { get; set; }
-    public double? WindowTop { get; set; }
-    public double? WindowWidth { get; set; }
-    public double? WindowHeight { get; set; }
 }
