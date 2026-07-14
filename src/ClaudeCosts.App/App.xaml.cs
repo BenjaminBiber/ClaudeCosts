@@ -101,6 +101,7 @@ public partial class App : Application
             _window = new MainWindow { DataContext = _vm };
             _window.Closing += OnWindowClosing;
             _window.Deactivated += OnWindowDeactivated;
+            _vm.PropertyChanged += OnViewModelPropertyChanged;
         }
 
         ApplyPlacement(_window); // re-anchor to the bottom-right corner on every open
@@ -108,8 +109,18 @@ public partial class App : Application
         if (_window.WindowState == WindowState.Minimized)
             _window.WindowState = WindowState.Normal;
         _window.Activate();
+        // Bring to front. When pinned, keep it Topmost so it stays visible over the
+        // window the user works in; otherwise drop Topmost again (plain flyout).
         _window.Topmost = true;
-        _window.Topmost = false;
+        if (!_vm.Pinned)
+            _window.Topmost = false;
+    }
+
+    // Pinning must make the flyout stay visibly on top; unpinning releases that.
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.Pinned) && _window is { IsVisible: true })
+            _window.Topmost = _vm.Pinned;
     }
 
     // Closing just hides the flyout; the app keeps living in the tray.
