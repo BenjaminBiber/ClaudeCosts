@@ -1,0 +1,193 @@
+<Window x:Class="ClaudeCosts.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClaudeCosts.App"
+        mc:Ignorable="d"
+        Title="Claude-Kosten" Height="640" Width="940" MinHeight="480" MinWidth="740"
+        Background="{StaticResource WindowBg}"
+        FontFamily="Segoe UI" TextOptions.TextFormattingMode="Ideal"
+        UseLayoutRounding="True">
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header card -->
+        <Border Grid.Row="0" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
+                BorderThickness="1" CornerRadius="12" Padding="22,18">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PeriodTypeName, StringFormat=KOSTEN · {0}}"
+                               FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SubtleBg}" />
+                    <TextBlock Text="{Binding Headline}" FontSize="46" FontWeight="Bold"
+                               Foreground="{StaticResource TextBg}" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding HeadlineCaption}" FontSize="14"
+                               Foreground="{StaticResource SubtleBg}" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <Border Background="{StaticResource BarTrack}" CornerRadius="9" Padding="3"
+                            HorizontalAlignment="Right">
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton Style="{StaticResource GranToggle}" Content="Tag"
+                                          Command="{Binding SetGranularityCommand}" CommandParameter="Day"
+                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Day}" />
+                            <ToggleButton Style="{StaticResource GranToggle}" Content="Woche"
+                                          Command="{Binding SetGranularityCommand}" CommandParameter="Week"
+                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Week}" />
+                            <ToggleButton Style="{StaticResource GranToggle}" Content="Monat"
+                                          Command="{Binding SetGranularityCommand}" CommandParameter="Month"
+                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=Month}" />
+                            <ToggleButton Style="{StaticResource GranToggle}" Content="Gesamt"
+                                          Command="{Binding SetGranularityCommand}" CommandParameter="All"
+                                          IsChecked="{Binding Granularity, Mode=OneWay, Converter={StaticResource EnumMatch}, ConverterParameter=All}" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <TextBlock Text="Lädt …" Foreground="{StaticResource SubtleBg}" FontSize="12"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"
+                                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                        <Button Style="{StaticResource ToolButton}" Content="↻  Aktualisieren"
+                                Command="{Binding ReloadCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Content -->
+        <Grid Grid.Row="1" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Buckets -->
+            <Border Grid.Column="0" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
+                    BorderThickness="1" CornerRadius="12" Padding="18,16" Margin="0,0,7,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}" Text="{Binding BucketsHeader}" />
+
+                    <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                               Foreground="{StaticResource SubtleBg}" FontSize="13"
+                               Visibility="{Binding HasNoData, Converter={StaticResource BoolToVis}}" />
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Buckets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="8" Padding="10,7" Margin="0,0,0,3" Background="Transparent">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="160" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="96" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Label}" FontSize="13"
+                                                           Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
+                                                           FontSize="11" Foreground="{StaticResource SubtleBg}" />
+                                            </StackPanel>
+                                            <ProgressBar Grid.Column="1" Style="{StaticResource BarStyle}"
+                                                         Value="{Binding Percent, Mode=OneWay}"
+                                                         VerticalAlignment="Center" Margin="10,0" />
+                                            <TextBlock Grid.Column="2" Text="{Binding CostText}" FontSize="14"
+                                                       FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Models -->
+            <Border Grid.Column="1" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBg}"
+                    BorderThickness="1" CornerRadius="12" Padding="18,16" Margin="7,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
+                               Text="{Binding PeriodTypeName, StringFormat=MODELLE · {0}}" />
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Models}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,7" Margin="0,0,0,3">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="90" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Model}" FontSize="13"
+                                                           Foreground="{StaticResource TextBg}" TextTrimming="CharacterEllipsis" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
+                                                               FontSize="11" Foreground="{StaticResource SubtleBg}" />
+                                                    <TextBlock Text="{Binding PricingNote}" FontSize="11"
+                                                               Foreground="{StaticResource Accent}" Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <ProgressBar Style="{StaticResource BarStyle}"
+                                                             Value="{Binding Percent, Mode=OneWay}" Margin="0,6,0,0" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
+                                                       FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" Margin="4,12,4,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Berechneter API-Listenpreis (wie ccusage) – kein real abgerechneter Betrag."
+                           FontSize="11" Foreground="{StaticResource SubtleBg}" />
+                <TextBlock Text="{Binding LastUpdatedText}" FontSize="11"
+                           Foreground="{StaticResource SubtleBg}" Margin="0,2,0,0" />
+            </StackPanel>
+            <CheckBox Grid.Column="1" Content="Autostart mit Windows" VerticalAlignment="Center"
+                      Foreground="{StaticResource TextBg}" IsChecked="{Binding Autostart}" />
+        </Grid>
+    </Grid>
+</Window>
