@@ -14,6 +14,7 @@ public partial class App : Application
     private Mutex? _instanceMutex;
     private SettingsService _settingsService = null!;
     private AppSettings _settings = null!;
+    private BigMacIndexService _bigMac = null!;
     private UsageService _usage = null!;
     private MainViewModel _vm = null!;
     private TrayIconController _tray = null!;
@@ -37,12 +38,13 @@ public partial class App : Application
 
         _settingsService = new SettingsService();
         _settings = _settingsService.Load();
+        _bigMac = new BigMacIndexService();
 
         var pricing = PricingTable.LoadOrCreate(SettingsService.PricingPath);
         _usage = new UsageService(pricing);
 
         _vm = new MainViewModel(
-            _usage, _settings, _settingsService, new AutostartService(),
+            _usage, _settings, _settingsService, new AutostartService(), _bigMac,
             showWindow: ShowMainWindow,
             toggleWindow: ToggleMainWindow,
             exit: ExitApp);
@@ -62,6 +64,7 @@ public partial class App : Application
         _timer.Start();
 
         _ = _vm.ReloadAsync(); // initial background load
+        _ = _bigMac.RefreshAsync(); // fetch latest Big Mac price (UI thread → Updated raised on UI thread)
 
         // Optional: open the dashboard on launch (e.g. a Start-menu shortcut with --show).
         if (e.Args.Any(a => a.Equals("--show", StringComparison.OrdinalIgnoreCase)

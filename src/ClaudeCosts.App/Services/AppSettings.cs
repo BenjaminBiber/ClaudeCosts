@@ -10,6 +10,9 @@ public sealed class AppSettings
 
     public bool WeekStartsMonday { get; set; } = true;
 
+    /// <summary>When true, costs are shown as a number of Big Macs instead of US dollars.</summary>
+    public bool DisplayInBigMacs { get; set; } = false;
+
     /// <summary>Safety-net full refresh interval, in seconds.</summary>
     public int RefreshIntervalSeconds { get; set; } = 60;
 }

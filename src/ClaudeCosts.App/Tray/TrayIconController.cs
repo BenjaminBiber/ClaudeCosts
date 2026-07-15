@@ -32,6 +32,9 @@ public sealed class TrayIconController : IDisposable
     private static readonly Typeface Face =
         new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
 
+    // The burger drawn onto the tray tile in Big Mac mode; null if the resource can't be loaded.
+    private static readonly ImageSource? BigMacImage = LoadBigMac();
+
     private readonly TaskbarIcon _icon;
     private readonly MainViewModel _vm;
 
@@ -69,7 +72,7 @@ public sealed class TrayIconController : IDisposable
     {
         try
         {
-            _icon.Icon = CreateIcon(RenderIcon(_vm.TrayText));
+            _icon.Icon = CreateIcon(RenderIcon(_vm.TrayText, _vm.DisplayInBigMacs));
         }
         catch
         {
@@ -99,14 +102,51 @@ public sealed class TrayIconController : IDisposable
         }
     }
 
-    /// <summary>Draws a light rounded tile with the dark cost text auto-sized to fit.</summary>
-    private static RenderTargetBitmap RenderIcon(string text)
+    /// <summary>Draws a light rounded tile with the dark cost text auto-sized to fit. In Big Mac
+    /// mode the burger fills the upper part of the tile and the count sits in a band beneath it.</summary>
+    private static RenderTargetBitmap RenderIcon(string text, bool bigMac)
     {
         var tile = new Rect(Inset, Inset, Canvas - 2 * Inset, Canvas - 2 * Inset);
         double pad = Canvas * PadFactor;
-        double maxWidth = tile.Width - 2 * pad;
-        double maxHeight = tile.Height - 2 * pad;
 
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRoundedRectangle(CardBrush, CardPen, tile, Radius, Radius);
+
+            if (bigMac && BigMacImage != null)
+            {
+                double imgSize = tile.Height * 0.56;
+                var imgRect = new Rect(tile.X + (tile.Width - imgSize) / 2, tile.Y + pad * 0.5, imgSize, imgSize);
+                dc.DrawImage(BigMacImage, imgRect);
+
+                double bandTop = imgRect.Bottom;
+                DrawFittedText(dc, text,
+                    centerX: tile.X + tile.Width / 2,
+                    centerY: (bandTop + tile.Bottom - pad * 0.5) / 2,
+                    maxWidth: tile.Width - 2 * pad,
+                    maxHeight: tile.Bottom - pad * 0.5 - bandTop);
+            }
+            else
+            {
+                DrawFittedText(dc, text,
+                    centerX: tile.X + tile.Width / 2,
+                    centerY: tile.Y + tile.Height / 2,
+                    maxWidth: tile.Width - 2 * pad,
+                    maxHeight: tile.Height - 2 * pad);
+            }
+        }
+
+        var bitmap = new RenderTargetBitmap((int)Canvas, (int)Canvas, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
+    /// <summary>Draws <paramref name="text"/> centred on the given point, auto-fitted to the box.</summary>
+    private static void DrawFittedText(DrawingContext dc, string text,
+        double centerX, double centerY, double maxWidth, double maxHeight)
+    {
         // One-pass fit: FormattedText metrics scale linearly with the em size.
         const double probeSize = 40;
         var probe = MakeText(text, probeSize);
@@ -115,20 +155,25 @@ public sealed class TrayIconController : IDisposable
         double fontSize = Math.Max(8, probeSize * Math.Min(widthScale, heightScale));
 
         var ft = MakeText(text, fontSize);
-        double x = tile.X + (tile.Width - ft.Width) / 2;
-        double y = tile.Y + (tile.Height - ft.Height) / 2;
+        dc.DrawText(ft, new Point(centerX - ft.Width / 2, centerY - ft.Height / 2));
+    }
 
-        var visual = new DrawingVisual();
-        using (var dc = visual.RenderOpen())
+    private static ImageSource? LoadBigMac()
+    {
+        try
         {
-            dc.DrawRoundedRectangle(CardBrush, CardPen, tile, Radius, Radius);
-            dc.DrawText(ft, new Point(x, y));
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.UriSource = new Uri("pack://application:,,,/Assets/bigmac.png");
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.EndInit();
+            img.Freeze();
+            return img;
         }
-
-        var bitmap = new RenderTargetBitmap((int)Canvas, (int)Canvas, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
-        bitmap.Freeze();
-        return bitmap;
+        catch
+        {
+            return null;
+        }
     }
 
     private static FormattedText MakeText(string text, double size) => new(

@@ -48,9 +48,14 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding PeriodTypeName, StringFormat=KOSTEN · {0}}"
                                FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SubtleBg}" />
-                    <TextBlock Text="{Binding Headline}" FontSize="34" FontWeight="Bold"
-                               Foreground="{StaticResource TextBg}" Margin="0,2,0,0"
-                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <Image Source="/Assets/bigmac.png" Height="30" Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding DisplayInBigMacs, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{Binding Headline}" FontSize="34" FontWeight="Bold"
+                                   Foreground="{StaticResource TextBg}"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </StackPanel>
                     <TextBlock Text="{Binding HeadlineCaption}" FontSize="14"
                                Foreground="{StaticResource SubtleBg}" Margin="0,2,0,0" />
                 </StackPanel>
@@ -117,10 +122,16 @@
                                                     <TextBlock Text="{Binding TokensText, StringFormat={}{0} Tokens}"
                                                                FontSize="11" Foreground="{StaticResource SubtleBg}" />
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
-                                                           FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                           Margin="10,0,0,0" />
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                            Margin="10,0,0,0">
+                                                    <Image Source="/Assets/bigmac.png" Height="13" Margin="0,0,5,0"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="{Binding DataContext.DisplayInBigMacs, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding CostText}" FontSize="14"
+                                                               FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -161,9 +172,15 @@
                                                                    Foreground="{StaticResource Accent}" Margin="8,0,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding CostText}" FontSize="14"
-                                                           FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <Image Source="/Assets/bigmac.png" Height="13" Margin="0,0,5,0"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="{Binding DataContext.DisplayInBigMacs, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding CostText}" FontSize="14"
+                                                               FontWeight="SemiBold" Foreground="{StaticResource TextBg}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -217,6 +234,8 @@
                                       IsChecked="{Binding Autostart}" />
                             <CheckBox Content="Woche beginnt am Montag" Foreground="{StaticResource TextBg}"
                                       IsChecked="{Binding WeekStartsMonday}" Margin="0,10,0,0" />
+                            <CheckBox Content="Kosten in Big Macs statt Dollar" Foreground="{StaticResource TextBg}"
+                                      IsChecked="{Binding DisplayInBigMacs}" Margin="0,10,0,0" />
 
                             <Grid Margin="0,16,0,0">
                                 <Grid.ColumnDefinitions>

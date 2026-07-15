@@ -17,6 +17,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly AppSettings _settings;
     private readonly SettingsService _settingsService;
     private readonly AutostartService _autostart;
+    private readonly BigMacIndexService _bigMac;
     private readonly Action _showWindow;
     private readonly Action _toggleWindow;
     private readonly Action _exit;
@@ -42,6 +43,7 @@ public sealed class MainViewModel : ViewModelBase
         AppSettings settings,
         SettingsService settingsService,
         AutostartService autostart,
+        BigMacIndexService bigMac,
         Action showWindow,
         Action toggleWindow,
         Action exit)
@@ -50,6 +52,7 @@ public sealed class MainViewModel : ViewModelBase
         _settings = settings;
         _settingsService = settingsService;
         _autostart = autostart;
+        _bigMac = bigMac;
         _showWindow = showWindow;
         _toggleWindow = toggleWindow;
         _exit = exit;
@@ -66,6 +69,7 @@ public sealed class MainViewModel : ViewModelBase
         OpenFolderCommand = new RelayCommand(OpenDataFolder);
 
         _usage.Updated += (_, _) => Refresh();
+        _bigMac.Updated += (_, _) => Refresh();
         Refresh();
     }
 
@@ -118,6 +122,20 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (_settings.WeekStartsMonday == value) return;
             _settings.WeekStartsMonday = value;
+            _settingsService.Save(_settings);
+            OnPropertyChanged();
+            Refresh();
+        }
+    }
+
+    /// <summary>When true, all cost figures are shown as a number of Big Macs instead of dollars.</summary>
+    public bool DisplayInBigMacs
+    {
+        get => _settings.DisplayInBigMacs;
+        set
+        {
+            if (_settings.DisplayInBigMacs == value) return;
+            _settings.DisplayInBigMacs = value;
             _settingsService.Save(_settings);
             OnPropertyChanged();
             Refresh();
@@ -193,6 +211,11 @@ public sealed class MainViewModel : ViewModelBase
         Granularity = g;
     }
 
+    // Cost value → display string, honouring the Big Mac toggle and the live Big Mac price.
+    private string FmtCost(double usd) => Format.Money(usd, _settings.DisplayInBigMacs, _bigMac.CurrentPriceUsd);
+
+    private string FmtTray(double usd) => Format.TrayText(usd, _settings.DisplayInBigMacs, _bigMac.CurrentPriceUsd);
+
     private void Refresh()
     {
         var g = _settings.TrayPeriod;
@@ -201,7 +224,7 @@ public sealed class MainViewModel : ViewModelBase
         var current = _usage.CurrentPeriod(g, weekMon);
         var buckets = _usage.Aggregate(g, weekMon);
 
-        Headline = Format.Money(current.Cost);
+        Headline = FmtCost(current.Cost);
         HeadlineCaption = Format.PeriodLabel(current);
         PeriodTypeName = Format.PeriodTypeName(g);
         BucketsHeader = g switch
@@ -218,7 +241,7 @@ public sealed class MainViewModel : ViewModelBase
         Buckets = buckets.Take(60).Select(b => new BucketRow
         {
             Label = Format.PeriodLabel(b),
-            CostText = Format.Money(b.Cost),
+            CostText = FmtCost(b.Cost),
             TokensText = Format.Tokens(b.TotalTokens),
             Percent = maxBucketCost > 0 ? b.Cost / maxBucketCost * 100 : 0,
             IsCurrent = (b.PeriodStart ?? DateOnly.MinValue) == currentKey,
@@ -229,7 +252,7 @@ public sealed class MainViewModel : ViewModelBase
         Models = models.Select(m => new ModelRow
         {
             Model = ShortModel(m.Model),
-            CostText = Format.Money(m.Cost),
+            CostText = FmtCost(m.Cost),
             TokensText = Format.Tokens(m.TotalTokens),
             Percent = maxModelCost > 0 ? m.Cost / maxModelCost * 100 : 0,
             Known = m.KnownPricing,
@@ -244,7 +267,7 @@ public sealed class MainViewModel : ViewModelBase
             ? "Stand: " + t.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")
             : "";
 
-        TrayText = Format.TrayText(current.Cost);
+        TrayText = FmtTray(current.Cost);
         TrayTooltip = BuildTooltip(current);
 
         TrayChanged?.Invoke(this, EventArgs.Empty);
@@ -252,16 +275,17 @@ public sealed class MainViewModel : ViewModelBase
 
     private string BuildTooltip(UsageBucket current)
     {
+        string unit = _settings.DisplayInBigMacs ? " Big Macs" : "";
         var lines = new List<string>
         {
             $"Claude-Kosten · {Format.PeriodTypeName(current.Granularity)}",
-            $"{Format.PeriodLabel(current)}: {Format.Money(current.Cost)}",
+            $"{Format.PeriodLabel(current)}: {FmtCost(current.Cost)}{unit}",
         };
 
         if (current.Models.Count > 0)
         {
             var top = current.Models[0];
-            lines.Add($"Top: {ShortModel(top.Model)} {Format.Money(top.Cost)}");
+            lines.Add($"Top: {ShortModel(top.Model)} {FmtCost(top.Cost)}{unit}");
         }
 
         if (!string.IsNullOrEmpty(LastUpdatedText))
